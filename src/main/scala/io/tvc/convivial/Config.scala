@@ -1,13 +1,12 @@
 package io.tvc.convivial
 
 import cats.MonadError
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.data.Validated._
-import io.tvc.convivial.twitter.TwitterClient
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.syntax.apply._
+import io.tvc.convivial.twitter.TwitterClient
 import org.http4s.Uri
 import org.http4s.client.oauth1.Consumer
-
 
 case class Config(
   twitter: TwitterClient.Config

@@ -3,13 +3,12 @@ package io.tvc.convivial
 import cats.effect.ExitCode.Error
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.syntax.functor._
+import io.tvc.convivial.http.Session
 import io.tvc.convivial.twitter.{TokenStorage, TwitterClient, TwitterSSO}
 import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.syntax.kleisli._
-import cats.syntax.functor._
-import io.tvc.convivial.http.Session
 
 import scala.concurrent.ExecutionContext.global
 

@@ -1,16 +1,16 @@
 package io.tvc.convivial.twitter
 
 import cats.effect.Sync
+import cats.instances.option._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import cats.syntax.traverse._
 import io.tvc.convivial.http.Session.SessionId
 import io.tvc.convivial.twitter.TwitterClient.Verifier
-import org.http4s.{AuthedRoutes, Response}
 import org.http4s.QueryParamDecoder.{stringQueryParamDecoder => str}
-import cats.syntax.traverse._
-import cats.instances.option._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.Http4sDsl
+import org.http4s.{AuthedRoutes, Response}
 
 class TwitterSSO[F[_]: Sync](twitter: TwitterClient[F], store: TokenStorage[F]) extends Http4sDsl[F] {
 

@@ -2,9 +2,9 @@ package io.tvc.convivial.twitter
 
 import cats.effect.concurrent.Ref
 import cats.effect.{Resource, Sync}
+import cats.syntax.functor._
 import io.tvc.convivial.http.Session.SessionId
 import io.tvc.convivial.twitter.TwitterClient.RequestToken
-import cats.syntax.functor._
 
 trait TokenStorage[F[_]] {
   def store(sessionId: SessionId, requestToken: RequestToken): F[Unit]

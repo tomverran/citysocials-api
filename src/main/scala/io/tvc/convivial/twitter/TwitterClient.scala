@@ -1,4 +1,5 @@
 package io.tvc.convivial.twitter
+
 import cats.effect.Sync
 import cats.instances.option._
 import cats.instances.string._
