@@ -3,7 +3,7 @@ package io.tvc.convivial.twitter
 import cats.effect.concurrent.Ref
 import cats.effect.{Resource, Sync}
 import cats.syntax.functor._
-import io.tvc.convivial.http.Session.SessionId
+import io.tvc.convivial.session.IdCreator.SessionId
 import io.tvc.convivial.twitter.TwitterClient.RequestToken
 
 trait TokenStorage[F[_]] {

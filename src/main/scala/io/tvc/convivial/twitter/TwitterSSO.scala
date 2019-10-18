@@ -5,7 +5,7 @@ import cats.instances.option._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
-import io.tvc.convivial.http.Session.SessionId
+import io.tvc.convivial.session.IdCreator.SessionId
 import io.tvc.convivial.twitter.TwitterClient.Verifier
 import org.http4s.QueryParamDecoder.{stringQueryParamDecoder => str}
 import org.http4s.circe.CirceEntityCodec._
