@@ -31,6 +31,9 @@ object Config {
       fromEither(Try(s.toInt).toEither.left.map(_ => NonEmptyList.of(s"$name: not an int")))
     }
 
+  private def opt[A](name: String, opt: Option[A]): ValidatedNel[String, A] =
+    Validated.fromOption(opt, NonEmptyList.of(s"$name: missing"))
+
   private def uri(name: String): ValidatedNel[String, Uri] =
     str(name).andThen(Uri.fromString(_).fold(e => invalidNel(s"$name: ${e.message}"), validNel))
 
@@ -47,10 +50,18 @@ object Config {
         ).mapN(TwitterClient.Config.apply),
         str("SESSION_SECRET").map(IdCreator.Config.apply),
         (
-          str("DATABASE_JDBC_URL").orElse(str("JDBC_DATABASE_URL")),
-          str("DATABASE_USERNAME").orElse(str("JDBC_DATABASE_USERNAME")),
-          str("DATABASE_PASSWORD").orElse(str("JDBC_DATABASE_PASSWORD"))
-        ).mapN(Postgres.Config),
+          str("DATABASE_JDBC_URL"),
+          str("DATABASE_USERNAME"),
+          str("DATABASE_PASSWORD"),
+        ).mapN(Postgres.Config).orElse(
+          uri("DATABASE_URL").andThen { url =>
+            (
+              opt("DATABASE_URL host", url.host).map(h => s"jdbc:postgresql://$h${url.path}"),
+              opt("DATABASE_URL user", url.authority.flatMap(_.userInfo.map(_.username))),
+              opt("DATABASE_URL pass", url.authority.flatMap(_.userInfo.flatMap(_.password)))
+            ).mapN(Postgres.Config)
+          }
+        ),
         (
           str("REDIS_URL"),
           Validated.validNel(1.hour)
