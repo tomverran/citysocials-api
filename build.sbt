@@ -25,6 +25,12 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic-extras" % circeVersion,
   "ch.qos.logback" % "logback-classic" % "1.2.3",
 
+  "com.zaxxer" % "HikariCP" % "3.4.1",
+  "org.flywaydb" % "flyway-core" % "6.0.6",
+  "org.tpolecat" %% "doobie-core" % "0.8.4",
+  "org.tpolecat" %% "doobie-postgres"  % "0.8.4",
+  "dev.profunktor" %% "redis4cats-effects" % "0.9.0",
+
   "org.typelevel" %% "claimant" % "0.1.0" % Test,
   "org.scalatest" %% "scalatest" % "3.0.8" % Test,
   "org.scalacheck" %% "scalacheck" % "1.14.1" % Test

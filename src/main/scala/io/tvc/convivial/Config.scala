@@ -5,13 +5,17 @@ import cats.data.Validated._
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.syntax.apply._
 import io.tvc.convivial.session.IdCreator
+import io.tvc.convivial.storage.{Postgres, Redis}
 import io.tvc.convivial.twitter.TwitterClient
 import org.http4s.Uri
 import org.http4s.client.oauth1.Consumer
+import scala.concurrent.duration._
 
 case class Config(
   twitter: TwitterClient.Config,
-  session: IdCreator.Config
+  session: IdCreator.Config,
+  postgres: Postgres.Config,
+  redis: Redis.Config
 )
 
 object Config {
@@ -32,8 +36,17 @@ object Config {
           ).mapN(Consumer.apply),
           uri("TWITTER_CALLBACK")
         ).mapN(TwitterClient.Config.apply),
-        str("SESSION_SECRET").map(IdCreator.Config.apply)
-      ).mapN(Config.apply)
+        str("SESSION_SECRET").map(IdCreator.Config.apply),
+        (
+          str("DATABASE_JDBC_URL"),
+          str("DATABASE_USERNAME"),
+          str("DATABASE_PASSWORD")
+        ).mapN(Postgres.Config),
+        (
+          str("REDIS_URL"),
+          Validated.validNel(1.hour)
+        ).mapN(Redis.Config)
+        ).mapN(Config.apply)
        .leftMap(es => new Exception(s"Failed to load config:\n${es.toList.mkString("\n")}"))
        .toEither
     )

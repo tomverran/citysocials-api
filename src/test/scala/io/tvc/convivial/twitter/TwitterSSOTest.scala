@@ -1,21 +1,24 @@
 package io.tvc.convivial.twitter
 
 import cats.effect.IO
+import cats.syntax.flatMap._
+import io.tvc.convivial
 import io.tvc.convivial.session.IdCreator.SessionId
+import io.tvc.convivial.session.{SessionStorage, TestSessionStorage}
 import io.tvc.convivial.twitter.TwitterClient.{AccessToken, RequestToken, User, Verifier}
+import io.tvc.convivial.users
+import io.tvc.convivial.users.{TestUserStorage, UserStorage}
 import org.http4s.client.oauth1.Token
 import org.http4s.syntax.literals._
 import org.http4s.{AuthedRequest, Request, Response, Status}
-import org.http4s.circe.CirceEntityCodec._
 import org.scalatest.{Matchers, WordSpec}
-import cats.syntax.flatMap._
 
 class TwitterSSOTest extends WordSpec with Matchers {
 
   "Twitter SSO routes" should {
 
     val sessId = SessionId("abcd")
-    val user: User = User("person", "screen", Some("foo@bar.com"))
+    val user: User = User("person", TwitterId("screen"))
     val request = RequestToken(Token("rt", "rt_sec"), oauthCallbackConfirmed = true)
     val redir = Response[IO](status = Status.ExpectationFailed)
     val access = AccessToken(Token("at", "at_sec"))
@@ -28,11 +31,20 @@ class TwitterSSOTest extends WordSpec with Matchers {
         def verifyCredentials(accessToken: AccessToken): IO[User] = IO.pure(user)
       }
 
+    val failSessionStore: SessionStorage[IO] =
+      new SessionStorage[IO] {
+        def put(sessionId: SessionId, user: users.User): IO[Unit] = IO.raiseError(new Exception)
+        def get(sessionId: SessionId): IO[Option[users.User]] = IO.raiseError(new Exception)
+      }
+
+    val userStore: UserStorage[IO] =
+      _ => IO.pure(users.User.Id(1234))
+
     "Get a refresh token from twitter and send you there when going to /twitter/login" in {
-      val (redirect, session) = TokenStorage.toy[IO].use { storage =>
+      val (redirect, session) = TestTokenStorage.apply[IO].flatMap { storage =>
 
         val request = AuthedRequest(sessId, Request[IO](uri = uri"http://localhost/twitter/login"))
-        val routes = new TwitterSSO[IO](client, storage).routes
+        val routes = new TwitterSSO[IO](client, storage, userStore, failSessionStore).routes
 
         for {
           redirect <- routes.run(request).value
@@ -45,21 +57,31 @@ class TwitterSSOTest extends WordSpec with Matchers {
     }
 
     "Kick you out if when returning from twitter your OAuth token does not match the one stored" in {
-      TokenStorage.toy[IO].use { storage =>
+      TestTokenStorage.apply[IO].flatMap { storage =>
         val verifyUri = uri"http://foo/twitter/verify?oauth_token=bar&oauth_verifier=baz"
         val verifyRequest = AuthedRequest(sessId, Request[IO](uri = verifyUri))
-        val routes = new TwitterSSO[IO](client, storage).routes
+        val routes = new TwitterSSO[IO](client, storage, userStore, failSessionStore).routes
         storage.store(sessId, request) >> routes.run(verifyRequest).value
       }.attempt.unsafeRunSync() should matchPattern { case Left(_) => }
     }
 
     "Return your user details if the verify request succeeds" in {
-      TokenStorage.toy[IO].use { storage =>
-        val verifyUri = uri"http://foo/twitter/verify?oauth_token=rt&oauth_verifier=baz"
-        val verifyRequest = AuthedRequest(sessId, Request[IO](uri = verifyUri))
-        val routes = new TwitterSSO[IO](client, storage).routes
-        storage.store(sessId, request) >> routes.run(verifyRequest).semiflatMap(_.as[User]).value
-      }.unsafeRunSync() shouldBe Some(user)
+      val verifyUri = uri"http://foo/twitter/verify?oauth_token=rt&oauth_verifier=baz"
+      val verifyRequest = AuthedRequest(sessId, Request[IO](uri = verifyUri))
+      (
+        for {
+          users <- TestUserStorage.apply[IO]
+          tokens <- TestTokenStorage.apply[IO]
+          sessions <- TestSessionStorage.apply[IO]
+          routes = new TwitterSSO(client, tokens, users, sessions).routes
+          _ <- tokens.store(sessId, request) >> routes.run(verifyRequest).value
+          writtenSession <- sessions.get(sessId)
+          writtenUsers <- users.written
+        } yield {
+          writtenUsers shouldBe List(convivial.users.User(user.name, user.idStr))
+          writtenSession shouldBe Some(convivial.users.User(user.name, user.idStr))
+        }
+      ).unsafeRunSync()
     }
   }
 }

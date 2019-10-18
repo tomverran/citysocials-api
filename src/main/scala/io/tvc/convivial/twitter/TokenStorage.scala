@@ -1,9 +1,7 @@
 package io.tvc.convivial.twitter
 
-import cats.effect.concurrent.Ref
-import cats.effect.{Resource, Sync}
-import cats.syntax.functor._
 import io.tvc.convivial.session.IdCreator.SessionId
+import io.tvc.convivial.storage.Redis
 import io.tvc.convivial.twitter.TwitterClient.RequestToken
 
 trait TokenStorage[F[_]] {
@@ -13,19 +11,11 @@ trait TokenStorage[F[_]] {
 
 object TokenStorage {
 
-  /**
-    * Toy implementation of token storage
-    * that just uses a ref of a map for now
-    */
-  def toy[F[_]: Sync]: Resource[F, TokenStorage[F]] =
-    Resource.liftF(
-      Ref.of[F, Map[SessionId, RequestToken]](Map.empty).map { ref =>
-        new TokenStorage[F] {
-          def store(sessionId: SessionId, requestToken: RequestToken): F[Unit] =
-            ref.update(_.updated(sessionId, requestToken))
-          def retrieve(sessionId: SessionId): F[Option[RequestToken]] =
-            ref.get.map(_.get(sessionId))
-        }
-      }
-    )
+  def redis[F[_]](redis: Redis[F]): TokenStorage[F] =
+    new TokenStorage[F] {
+      def store(sessionId: SessionId, requestToken: RequestToken): F[Unit] =
+        redis.put(s"${sessionId.value}_rt", requestToken)
+      def retrieve(sessionId: SessionId): F[Option[RequestToken]] =
+        redis.get(s"${sessionId.value}_rt")
+    }
 }

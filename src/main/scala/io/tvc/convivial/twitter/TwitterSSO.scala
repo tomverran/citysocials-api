@@ -1,22 +1,30 @@
 package io.tvc.convivial.twitter
 
+import cats.data.OptionT
 import cats.effect.Sync
-import cats.instances.option._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import cats.syntax.traverse._
 import io.tvc.convivial.session.IdCreator.SessionId
-import io.tvc.convivial.twitter.TwitterClient.Verifier
+import io.tvc.convivial.session.SessionStorage
+import io.tvc.convivial.twitter.TwitterClient.{RequestToken, Verifier}
+import io.tvc.convivial.users.{User, UserStorage}
+import org.http4s.AuthedRoutes
 import org.http4s.QueryParamDecoder.{stringQueryParamDecoder => str}
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{AuthedRoutes, Response}
 
-class TwitterSSO[F[_]: Sync](twitter: TwitterClient[F], store: TokenStorage[F]) extends Http4sDsl[F] {
+class TwitterSSO[F[_]](
+  twitter: TwitterClient[F],
+  tokens: TokenStorage[F],
+  users: UserStorage[F],
+  sessions: SessionStorage[F]
+)(implicit F: Sync[F]) extends Http4sDsl[F] {
 
   object Verify extends QueryParamDecoderMatcher[Verifier]("oauth_verifier")(str.map(Verifier.apply))
   object Token extends QueryParamDecoderMatcher[String]("oauth_token")(str)
-  private val badToken = new Exception("oauth_token mismatch")
+
+  private def checkToken(original: RequestToken, now: String): F[Unit] =
+    if (original.token.value != now) F.raiseError(new Exception("oauth_token mismatch")) else F.unit
 
   val routes: AuthedRoutes[SessionId, F] =
     AuthedRoutes.of[SessionId, F] {
@@ -24,18 +32,22 @@ class TwitterSSO[F[_]: Sync](twitter: TwitterClient[F], store: TokenStorage[F]) 
       case GET -> Root / "twitter" / "login" as id =>
         for {
           token <- twitter.requestToken
-          _     <- store.store(id, token)
+          _     <- tokens.store(id, token)
           redirect <- twitter.redirect(token)
         } yield redirect
 
       case GET -> Root / "twitter" / "verify" :? Token(t) +& Verify(v) as id =>
-        for {
-          requestToken <- store.retrieve(id)
-          _ <- Sync[F].fromEither(requestToken.filter(_.token.value == t).toRight(badToken))
-          accessToken <- requestToken.traverse(twitter.accessToken(v, _))
-          user <- accessToken.traverse(twitter.verifyCredentials)
-        } yield Response[F]().withEntity(user)
-
+        OptionT(tokens.retrieve(id)).semiflatMap { requestToken =>
+          for {
+            _ <- checkToken(requestToken, t)
+            accessToken <- twitter.accessToken(v, requestToken)
+            credentials <- twitter.verifyCredentials(accessToken)
+            user = User(credentials.name, credentials.idStr)
+            _ <- users.upsert(user)
+            _ <- sessions.put(id, user)
+            result <- Ok(user)
+          } yield result
+        }.getOrElseF(BadRequest(""))
     }
 }
 

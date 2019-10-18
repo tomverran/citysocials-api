@@ -101,8 +101,8 @@ class TwitterClientTest extends WordSpec with Matchers {
   "TwitterClient.verifyCredentials" should {
 
     val at: AccessToken = AccessToken(Token("at", "at_s"))
-    val userJson = s"""{"name": "foo", "screen_name": "bar", "email": null}"""
-    val user: User = User("foo", "bar", None)
+    val userJson = s"""{"name": "foo", "id_str": "baz"}"""
+    val user: User = User("foo", TwitterId("baz"))
 
     "Parse the resulting user okay" in {
       TwitterClient[IO](config, okClient(userJson)).verifyCredentials(at).unsafeRunSync() shouldBe user

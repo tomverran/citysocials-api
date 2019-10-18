@@ -6,6 +6,8 @@ import cats.instances.string._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default
 import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec}
 import io.tvc.convivial.twitter.TwitterClient.{AccessToken, RequestToken, User, Verifier}
@@ -16,6 +18,7 @@ import org.http4s.client.Client
 import org.http4s.client.oauth1.{Consumer, Token, signRequest}
 import org.http4s.headers.Location
 import org.http4s.syntax.literals._
+import io.circe.generic.semiauto._
 
 import scala.util.Try
 
@@ -34,22 +37,17 @@ object TwitterClient {
 
   val baseUri = uri"https://api.twitter.com"
   implicit val c: Configuration = default.withSnakeCaseMemberNames
+  implicit val encodeToken: Encoder[Token] = deriveEncoder
+  implicit val decodeToken: Decoder[Token] = deriveDecoder
 
-  case class Config(
-    consumer: Consumer,
-    callback: Uri
-  )
+  case class Config(consumer: Consumer, callback: Uri)
 
+  @JsonCodec
   case class RequestToken(token: Token, oauthCallbackConfirmed: Boolean)
   case class AccessToken(value: Token) extends AnyVal
 
   @ConfiguredJsonCodec
-  case class User(
-    name: String,
-    screenName: String,
-    email: Option[String]
-  )
-
+  case class User(name: String, idStr: TwitterId)
   case class Verifier(value: String) extends AnyVal
 
   def apply[F[_]](config: Config, client: Client[F])(implicit F: Sync[F]): TwitterClient[F] =
