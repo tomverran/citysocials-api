@@ -63,7 +63,7 @@ object Config {
           }
         ),
         (
-          str("REDIS_URL"),
+          str("REDIS_URL").orElse(str("REDISCLOUD_URL")),
           Validated.validNel(1.hour)
         ).mapN(Redis.Config)
         ).mapN(Config.apply)
