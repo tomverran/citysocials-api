@@ -36,4 +36,5 @@ libraryDependencies ++= Seq(
   "org.scalacheck" %% "scalacheck" % "1.14.1" % Test
 )
 
+enablePlugins(JavaAppPackaging)
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
