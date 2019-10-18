@@ -44,12 +44,12 @@ object Main extends IOApp {
         val twitter = TwitterClient(config.twitter, http)
         val tokens: TokenStorage[IO] = TokenStorage.redis(redis)
         val sessions: SessionStorage[IO] = SessionStorage.redis(redis)
-        SessionMiddleware.id(ids, new TwitterSSO[IO](twitter, tokens, users, sessions).routes)
+        SessionMiddleware.id(ids, new TwitterSSO[IO](twitter, tokens, users, sessions).routes) -> config
       }
-    ).use { routes =>
+    ).use { case (routes, config) =>
       BlazeServerBuilder.apply[IO]
         .withHttpApp(routes.orNotFound)
-        .bindHttp(8080, "0.0.0.0")
+        .bindHttp(config.port, "0.0.0.0")
         .withoutBanner
         .serve
         .compile
