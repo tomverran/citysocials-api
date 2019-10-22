@@ -18,7 +18,7 @@ object SessionStorage {
   def redis[F[_]](r: Redis[F]): SessionStorage[F] =
     new SessionStorage[F] {
       def put(sessionId: SessionId, user: User): F[Unit] = r.put(s"${sessionId.value}_u", user)
-      def get(sessionId: SessionId): F[Option[User]] = r.get(s"${sessionId.value}")
+      def get(sessionId: SessionId): F[Option[User]] = r.get(s"${sessionId.value}_u")
     }
 
 }

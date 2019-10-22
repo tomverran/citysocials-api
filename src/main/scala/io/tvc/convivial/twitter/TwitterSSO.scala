@@ -8,10 +8,12 @@ import io.tvc.convivial.session.IdCreator.SessionId
 import io.tvc.convivial.session.SessionStorage
 import io.tvc.convivial.twitter.TwitterClient.{RequestToken, Verifier}
 import io.tvc.convivial.users.{User, UserStorage}
-import org.http4s.AuthedRoutes
 import org.http4s.QueryParamDecoder.{stringQueryParamDecoder => str}
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.Location
+import org.http4s.syntax.literals._
+import org.http4s.{AuthedRoutes, Headers, Response}
 
 class TwitterSSO[F[_]](
   twitter: TwitterClient[F],
@@ -45,8 +47,10 @@ class TwitterSSO[F[_]](
             user = User(credentials.name, credentials.idStr)
             _ <- users.upsert(user)
             _ <- sessions.put(id, user)
-            result <- Ok(user)
-          } yield result
+          } yield Response[F](
+            status = TemporaryRedirect,
+            headers = Headers.of(Location(uri"/#profile"))
+          )
         }.getOrElseF(BadRequest(""))
     }
 }

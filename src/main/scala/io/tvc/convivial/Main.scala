@@ -3,11 +3,13 @@ package io.tvc.convivial
 import cats.effect.ExitCode.Error
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.syntax.functor._
+import cats.syntax.semigroupk._
 import dev.profunktor.redis4cats.effect.Log
-import io.tvc.convivial.session.{IdCreator, SessionMiddleware, SessionStorage}
+import io.tvc.convivial.session.SessionMiddleware.{id, user}
+import io.tvc.convivial.session.{IdCreator, SessionStorage}
 import io.tvc.convivial.storage.{Postgres, Redis}
 import io.tvc.convivial.twitter.{TokenStorage, TwitterClient, TwitterSSO}
-import io.tvc.convivial.users.UserStorage
+import io.tvc.convivial.users.{UserRoutes, UserStorage}
 import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -44,7 +46,10 @@ object Main extends IOApp {
         val twitter = TwitterClient(config.twitter, http)
         val tokens: TokenStorage[IO] = TokenStorage.redis(redis)
         val sessions: SessionStorage[IO] = SessionStorage.redis(redis)
-        SessionMiddleware.id(ids, new TwitterSSO[IO](twitter, tokens, users, sessions).routes) -> config
+        (
+          id(ids, new TwitterSSO[IO](twitter, tokens, users, sessions).routes) <+>
+          user(ids, sessions, new UserRoutes[IO].routes)
+        )-> config
       }
     ).use { case (routes, config) =>
       BlazeServerBuilder.apply[IO]
