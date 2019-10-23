@@ -10,8 +10,8 @@ import io.tvc.convivial.session.IdCreator.SessionId
 import io.tvc.convivial.session.SessionMiddleware._
 import io.tvc.convivial.twitter.TwitterId
 import io.tvc.convivial.users.User
-import org.http4s.headers.Cookie
-import org.http4s.{AuthedRoutes, Request, RequestCookie, Response, ResponseCookie}
+import org.http4s.headers.{Cookie, `Cache-Control`}
+import org.http4s.{AuthedRoutes, CacheDirective, Request, RequestCookie, Response, ResponseCookie}
 import org.http4s.circe.CirceEntityCodec._
 import org.scalatest.{Matchers, WordSpec}
 import cats.syntax.functor._
@@ -33,7 +33,7 @@ class SessionMiddlewareTest extends WordSpec with Matchers {
   val request: Request[IO] = Request[IO]()
   val response: Response[IO] = Response[IO]()
 
-  "Session.sessionId middleware" should {
+  "Session.id middleware" should {
 
     "Create a new session cookie where one is not passed" in {
       val resp = id[IO](stubIds, Kleisli.pure(response)).run(request).value.unsafeRunSync().get
@@ -53,6 +53,11 @@ class SessionMiddlewareTest extends WordSpec with Matchers {
       ).value.unsafeRunSync().get
     }
 
+    "Disable caching on all requests going through it" in {
+      val resp = id[IO](stubIds, Kleisli.pure(response)).run(request).value.unsafeRunSync().get
+      resp.headers.get(`Cache-Control`).map(_.values.head) shouldBe Some(CacheDirective.`no-cache`())
+    }
+
     "Ignore a session cookie if session ID verification fails" in {
       (
         for {
@@ -67,7 +72,7 @@ class SessionMiddlewareTest extends WordSpec with Matchers {
     }
   }
 
-  "Session.userId middleware" should {
+  "Session.user middleware" should {
 
     "Go to SessionStorage to swap a session ID for a user ID before passing it to the route" in {
       Ref.of[IO, List[SessionId]](List.empty).flatMap { ref =>

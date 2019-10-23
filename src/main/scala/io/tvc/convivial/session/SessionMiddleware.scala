@@ -1,14 +1,15 @@
 package io.tvc.convivial.session
 
-import cats.data.{Kleisli, OptionT}
+import cats.data.{Kleisli, NonEmptyList, OptionT}
 import cats.effect.Sync
 import cats.instances.option._
 import cats.syntax.traverse._
 import io.tvc.convivial.session.IdCreator.SessionId
-import org.http4s.headers.Cookie
-import org.http4s.{AuthedRequest, AuthedRoutes, HttpRoutes, ResponseCookie}
+import org.http4s.headers.{Cookie, `Cache-Control`}
+import org.http4s.{AuthedRequest, AuthedRoutes, Header, HttpRoutes, ResponseCookie}
 import cats.syntax.functor._
 import io.tvc.convivial.users.User
+import org.http4s.CacheDirective.`no-cache`
 /**
   * Scarily DIY cookie based session ID middleware -
   * retrieves the session ID for you if it exists & if not creates one + writes it back to the client
@@ -18,6 +19,7 @@ object SessionMiddleware {
   private val sessId: String = "id"
   type UserRoutes[F[_]] = AuthedRoutes[User, F]
   type SessionRoutes[F[_]] = AuthedRoutes[SessionId, F]
+  val noCache: Header = `Cache-Control`(NonEmptyList.of(`no-cache`()))
 
   /**
     * Middleware to handle creating + setting sessions for
@@ -35,7 +37,9 @@ object SessionMiddleware {
       for {
         id <- OptionT.liftF(session)
         result <- routes(AuthedRequest(id, req))
-      } yield result.addCookie(ResponseCookie(sessId, id.value, httpOnly = true, path = Some("/")))
+      } yield result
+        .putHeaders(noCache)
+        .addCookie(ResponseCookie(sessId, id.value, httpOnly = true, path = Some("/")))
     }
 
   /**
