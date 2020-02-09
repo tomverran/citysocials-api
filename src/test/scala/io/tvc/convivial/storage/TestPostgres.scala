@@ -66,11 +66,7 @@ trait TestPostgres extends DockerTestKit with Checkers {
   override def dockerContainers: List[DockerContainer] =
     postgres :: super.dockerContainers
 
-  /**
-    * This very unsafe query has to be a def because for some reason if it is a val
-    * the tests try to connect to the database too early. Good old pure FP.
-    */
-  private def massTruncate: ConnectionIO[Unit] =
+  private val massTruncate: ConnectionIO[Unit] =
     for {
       ts <- sql"SELECT tablename FROM pg_tables WHERE schemaname = 'public'".query[String].to[List]
       _  <- ts.filterNot(_.startsWith("flyway")).traverse(r => Update(s"TRUNCATE $r CASCADE").run(()))
