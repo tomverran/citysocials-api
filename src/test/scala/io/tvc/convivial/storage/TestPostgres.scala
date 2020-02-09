@@ -18,6 +18,7 @@ import org.scalactic.source
 import org.scalatest.Suite
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatestplus.scalacheck.Checkers
+import java.net.ServerSocket
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -43,11 +44,23 @@ trait TestPostgres extends DockerTestKit with Checkers {
     PropertyCheckConfiguration(minSuccessful = PosInt(500))
 
   /**
+    * This seems absolutely crazy to me
+    * but the internet says this is the easiest way to find a port
+    */
+  val port: Int = {
+    val serverSocket = new ServerSocket(0)
+    serverSocket.setReuseAddress(true)
+    val port = serverSocket.getLocalPort
+    serverSocket.close()
+    port
+  }
+
+  /**
     * Provides a database resource configured to talk to
     * the docker container we're about to run
     */
   def database[F[_] : Effect : ContextShift]: Resource[F, Transactor[F]] =
-    Postgres.transactor(Config(s"jdbc:postgresql://${dockerExecutor.host}/", "postgres", "postgres"))
+    Postgres.transactor(Config(s"jdbc:postgresql://${dockerExecutor.host}:$port/", "postgres", "postgres"))
 
   /**
     * Very brutal ready check that simply
@@ -60,7 +73,7 @@ trait TestPostgres extends DockerTestKit with Checkers {
 
   val postgres: DockerContainer =
     DockerContainer("postgres")
-      .withPorts(5432 -> Some(5432))
+      .withPorts(5432 -> Some(port))
       .withReadyChecker(readyCheck.looped(attempts = 100, delay = 100.millis))
 
   override def dockerContainers: List[DockerContainer] =
