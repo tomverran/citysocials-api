@@ -11,9 +11,10 @@ import io.tvc.convivial.users.{TestUserStorage, UserStorage}
 import org.http4s.client.oauth1.Token
 import org.http4s.syntax.literals._
 import org.http4s.{AuthedRequest, Request, Response, Status}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class TwitterSSOTest extends WordSpec with Matchers {
+class TwitterSSOTest extends AnyWordSpec with Matchers {
 
   "Twitter SSO routes" should {
 
@@ -33,8 +34,8 @@ class TwitterSSOTest extends WordSpec with Matchers {
 
     val failSessionStore: SessionStorage[IO] =
       new SessionStorage[IO] {
-        def put(sessionId: SessionId, user: users.User): IO[Unit] = IO.raiseError(new Exception)
-        def get(sessionId: SessionId): IO[Option[users.User]] = IO.raiseError(new Exception)
+        def put(sessionId: SessionId, user: users.User.Id): IO[Unit] = IO.raiseError(new Exception)
+        def get(sessionId: SessionId): IO[Option[users.User.Id]] = IO.raiseError(new Exception)
       }
 
     val userStore: UserStorage[IO] =
@@ -76,10 +77,11 @@ class TwitterSSOTest extends WordSpec with Matchers {
           routes = new TwitterSSO(client, tokens, users, sessions).routes
           _ <- tokens.store(sessId, request) >> routes.run(verifyRequest).value
           writtenSession <- sessions.get(sessId)
+          writtenIds <- users.writtenIds
           writtenUsers <- users.written
         } yield {
           writtenUsers shouldBe List(convivial.users.User(user.name, user.idStr))
-          writtenSession shouldBe Some(convivial.users.User(user.name, user.idStr))
+          writtenSession shouldBe writtenIds.headOption
         }
       ).unsafeRunSync()
     }

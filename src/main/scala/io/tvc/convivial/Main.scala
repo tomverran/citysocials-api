@@ -5,6 +5,7 @@ import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.syntax.functor._
 import cats.syntax.semigroupk._
 import dev.profunktor.redis4cats.effect.Log
+import io.tvc.convivial.profile.{ProfileRoutes, ProfileStorage}
 import io.tvc.convivial.session.SessionMiddleware.{id, user}
 import io.tvc.convivial.session.{IdCreator, SessionStorage}
 import io.tvc.convivial.storage.{Postgres, Redis}
@@ -42,12 +43,17 @@ object Main extends IOApp {
         ids <- IdCreator[IO](config.session)
         db <- Postgres.transactor[IO](config.postgres)
       } yield {
-        val users: UserStorage[IO] = UserStorage(db)
+
         val twitter = TwitterClient(config.twitter, http)
         val tokens: TokenStorage[IO] = TokenStorage.redis(redis)
+
+        val users: UserStorage[IO] = UserStorage.postgres(db)
         val sessions: SessionStorage[IO] = SessionStorage.redis(redis)
+        val profiles: ProfileStorage[IO] = ProfileStorage.postgres(db)
+
         (
           id(ids, new TwitterSSO[IO](twitter, tokens, users, sessions).routes) <+>
+          user(ids, sessions, new ProfileRoutes[IO](profiles).routes) <+>
           user(ids, sessions, new UserRoutes[IO].routes)
         )-> config
       }

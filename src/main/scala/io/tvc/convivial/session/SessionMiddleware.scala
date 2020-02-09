@@ -17,7 +17,7 @@ import org.http4s.CacheDirective.`no-cache`
 object SessionMiddleware {
 
   private val sessId: String = "id"
-  type UserRoutes[F[_]] = AuthedRoutes[User, F]
+  type UserRoutes[F[_]] = AuthedRoutes[User.Id, F]
   type SessionRoutes[F[_]] = AuthedRoutes[SessionId, F]
   val noCache: Header = `Cache-Control`(NonEmptyList.of(`no-cache`()))
 
@@ -52,7 +52,7 @@ object SessionMiddleware {
       ids = ids,
       routes = Kleisli { r =>
         for {
-          user <- OptionT(store.get(r.authInfo))
+          user <- OptionT(store.get(r.context))
           result <- routes.run(AuthedRequest(user, r.req))
         } yield result
       }

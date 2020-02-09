@@ -8,7 +8,9 @@ import cats.syntax.functor._
 import scala.util.Random
 
 trait TestUserStorage[F[_]] extends UserStorage[F] {
+  def writtenIds: F[List[User.Id]]
   def written: F[List[User]]
+
 }
 
 object TestUserStorage {
@@ -21,6 +23,7 @@ object TestUserStorage {
     Ref.of[F, Map[User.Id, User]](Map.empty).map { ref =>
       new TestUserStorage[F] {
         def written: F[List[User]] = ref.get.map(_.values.toList)
+        def writtenIds: F[List[User.Id]] = ref.get.map(_.keys.toList)
         def upsert(user: User): F[User.Id] =
           for {
             id <- F.delay(new Random().nextInt)

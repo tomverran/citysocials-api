@@ -17,11 +17,11 @@ object TestSessionStorage {
     * that just uses a ref of a map for now
     */
   def apply[F[_]: Sync]: F[TestSessionStorage[F]] =
-    Ref.of[F, Map[SessionId, User]](Map.empty).map { ref =>
+    Ref.of[F, Map[SessionId, User.Id]](Map.empty).map { ref =>
       new TestSessionStorage[F] {
-        def put(sessionId: SessionId, user: User): F[Unit] =
+        def put(sessionId: SessionId, user: User.Id): F[Unit] =
           ref.update(_.updated(sessionId, user))
-        def get(sessionId: SessionId): F[Option[User]] =
+        def get(sessionId: SessionId): F[Option[User.Id]] =
           ref.get.map(_.get(sessionId))
         def written: F[List[SessionId]] =
           ref.get.map(_.keys.toList)

@@ -21,7 +21,7 @@ object UserStorage {
   implicit val getTwitterId: Get[TwitterId] = Get[String].map(twitter.TwitterId.apply)
 
   private def find(id: TwitterId): ConnectionIO[Option[User.Id]] =
-    sql"SELECT id FROM users WHERe twitter_id = $id".query[User.Id].option
+    sql"SELECT id FROM users WHERE twitter_id = $id".query[User.Id].option
 
   private def insert(u: User): ConnectionIO[User.Id] =
     sql"""
@@ -29,6 +29,6 @@ object UserStorage {
     VALUES (${u.name},${u.twitterId}, NOW())
     """.update.withUniqueGeneratedKeys("id")
 
-  def apply[F[_]: Sync](transactor: Transactor[F]): UserStorage[F] =
+  def postgres[F[_]: Sync](transactor: Transactor[F]): UserStorage[F] =
     u => OptionT(find(u.twitterId)).getOrElseF(insert(u)).transact(transactor)
 }

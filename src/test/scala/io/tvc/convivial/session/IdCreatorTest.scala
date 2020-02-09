@@ -2,9 +2,10 @@ package io.tvc.convivial.session
 
 import cats.effect.IO
 import io.tvc.convivial.session.IdCreator.Config
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class IdCreatorTest extends WordSpec with Matchers {
+class IdCreatorTest extends AnyWordSpec with Matchers {
 
   "IdCreator" should {
 

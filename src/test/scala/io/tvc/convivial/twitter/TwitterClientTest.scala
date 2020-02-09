@@ -11,9 +11,10 @@ import org.http4s.headers.{Authorization, Location}
 import org.http4s.syntax.literals._
 import org.http4s.syntax.string._
 import org.http4s._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class TwitterClientTest extends WordSpec with Matchers {
+class TwitterClientTest extends AnyWordSpec with Matchers {
 
   def logCalls[F[_] : Sync, A](client: Client[F])(run: Client[F] => F[A]): F[List[Request[F]]] =
     for {

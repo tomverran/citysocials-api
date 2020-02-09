@@ -45,8 +45,8 @@ class TwitterSSO[F[_]](
             accessToken <- twitter.accessToken(v, requestToken)
             credentials <- twitter.verifyCredentials(accessToken)
             user = User(credentials.name, credentials.idStr)
-            _ <- users.upsert(user)
-            _ <- sessions.put(id, user)
+            userId <- users.upsert(user)
+            _ <- sessions.put(id, userId)
           } yield Response[F](
             status = TemporaryRedirect,
             headers = Headers.of(Location(uri"/#profile"))

@@ -2,23 +2,23 @@ package io.tvc.convivial.session
 
 import java.util.UUID
 
-import cats.data.{Kleisli, OptionT}
 import cats.data.NonEmptyList.fromListUnsafe
+import cats.data.{Kleisli, OptionT}
 import cats.effect.IO
 import cats.effect.concurrent.Ref
-import io.tvc.convivial.session.IdCreator.SessionId
-import io.tvc.convivial.session.SessionMiddleware._
-import io.tvc.convivial.twitter.TwitterId
-import io.tvc.convivial.users.User
-import org.http4s.headers.{Cookie, `Cache-Control`}
-import org.http4s.{AuthedRoutes, CacheDirective, Request, RequestCookie, Response, ResponseCookie}
-import org.http4s.circe.CirceEntityCodec._
-import org.scalatest.{Matchers, WordSpec}
+import cats.instances.option._
 import cats.syntax.functor._
 import cats.syntax.traverse._
-import cats.instances.option._
+import io.tvc.convivial.session.IdCreator.SessionId
+import io.tvc.convivial.session.SessionMiddleware._
+import io.tvc.convivial.users.User
+import org.http4s.circe.CirceEntityCodec._
+import org.http4s.headers.{Cookie, `Cache-Control`}
+import org.http4s._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SessionMiddlewareTest extends WordSpec with Matchers {
+class SessionMiddlewareTest extends AnyWordSpec with Matchers {
 
   val stubIds: IdCreator[IO] = new IdCreator[IO] {
     def create: IO[IdCreator.SessionId] = IO.pure(SessionId(UUID.randomUUID.toString))
@@ -77,17 +77,17 @@ class SessionMiddlewareTest extends WordSpec with Matchers {
     "Go to SessionStorage to swap a session ID for a user ID before passing it to the route" in {
       Ref.of[IO, List[SessionId]](List.empty).flatMap { ref =>
 
-        val authUser = User("abcd", TwitterId("twitterabcd"))
-        val routes: AuthedRoutes[User, IO] = Kleisli(r => OptionT.some(response.withEntity(r.authInfo)))
+        val authUser = User.Id(213)
+        val routes: AuthedRoutes[User.Id, IO] = Kleisli(r => OptionT.some(response.withEntity(r.context)))
 
         val store = new SessionStorage[IO] {
-          def put(sId: SessionId, user: User): IO[Unit] = IO.raiseError(new Exception)
-          def get(sId: SessionId): IO[Option[User]] = ref.update(_ :+ sId).as(Option(authUser))
+          def put(sId: SessionId, user: User.Id): IO[Unit] = IO.raiseError(new Exception)
+          def get(sId: SessionId): IO[Option[User.Id]] = ref.update(_ :+ sId).as(Option(authUser))
         }
 
         for {
           res <- user[IO](stubIds, store, routes).run(request).value
-          resolved <- res.traverse(_.as[User])
+          resolved <- res.traverse(_.as[User.Id])
           sessionId <- ref.get.map(_.head)
         } yield {
           resolved shouldBe Some(authUser)

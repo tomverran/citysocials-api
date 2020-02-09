@@ -3,11 +3,11 @@ package io.tvc.convivial.session
 import cats.effect.IO
 import io.tvc.convivial.session.IdCreator.SessionId
 import io.tvc.convivial.storage.TestRedis
-import io.tvc.convivial.twitter.TwitterId
 import io.tvc.convivial.users.User
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SessionStorageTest extends WordSpec with Matchers {
+class SessionStorageTest extends AnyWordSpec with Matchers {
 
   "Session storage" should {
 
@@ -15,7 +15,7 @@ class SessionStorageTest extends WordSpec with Matchers {
       (
         for {
           redis <- TestRedis[IO]
-          user = User("a", TwitterId("b"))
+          user = User.Id(1234)
           storage = SessionStorage.redis(redis)
           _ <- storage.put(SessionId("foo"), user)
           got <- storage.get(SessionId("foo"))

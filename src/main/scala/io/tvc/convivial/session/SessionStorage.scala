@@ -9,18 +9,17 @@ import io.tvc.convivial.users.User
   * to handle authentication with the API
   */
 trait SessionStorage[F[_]] {
-  def put(sessionId: SessionId, user: User): F[Unit]
-  def get(sessionId: SessionId): F[Option[User]]
+  def put(sessionId: SessionId, user: User.Id): F[Unit]
+  def get(sessionId: SessionId): F[Option[User.Id]]
 }
 
 object SessionStorage {
 
   def redis[F[_]](r: Redis[F]): SessionStorage[F] =
     new SessionStorage[F] {
-      def put(sessionId: SessionId, user: User): F[Unit] = r.put(s"${sessionId.value}_u", user)
-      def get(sessionId: SessionId): F[Option[User]] = r.get(s"${sessionId.value}_u")
+      def put(sessionId: SessionId, user: User.Id): F[Unit] = r.put(s"${sessionId.value}_uid", user)
+      def get(sessionId: SessionId): F[Option[User.Id]] = r.get(s"${sessionId.value}_uid")
     }
-
 }
 
 
